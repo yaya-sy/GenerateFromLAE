@@ -1,4 +1,4 @@
-add_positions: true
+src_pos_embeddings: true
 epochs: 3
 batch_size: 32
 dev: data/raw_text/fula.txt

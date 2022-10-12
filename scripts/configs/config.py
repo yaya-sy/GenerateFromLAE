@@ -24,7 +24,7 @@ class Config:
         The size of the vector representing the tokens
     - max_length: int
         The longest sequence 
-    - add_positions: bool
+    - src_pos_embeddings: bool
         Whether or not encode the positions of the sequences with\
         embeddings.
     - heads: int
@@ -67,7 +67,7 @@ class Config:
     pad_idx: Optional[int]
     embedding_dims: int
     max_length: int
-    add_positions: bool
+    src_pos_embeddings: bool
     heads: int
     layers: int
     ff_size: int

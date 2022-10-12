@@ -90,12 +90,12 @@ class MultiHeadAttention(nn.Module):
         # dot-product and use the scaling factor from 'Attention is all you need" paper
         # (https://arxiv.org/pdf/1706.03762.pdf)
         QK = (Q @ K) / 1 / torch.sqrt(torch.tensor(K.shape[-1])) # shape=[b, h, s_q, s_k]
-        print(QK.shape)
         if mask is not None:
+            print(QK.shape, mask.shape)
             QK += mask[:s_q, :s_k]
         attention = self.softmax(QK) # shape=[b, h, s_q, s_k])
         # for each word, concatenate the attention vectors comming from all the heads.
-        out = (attention @ V).view(b, s_q, -1) # [b, s, embedd_dims]
+        out = (attention @ V).view(b, s_q, -1) # [b, s_q, embedd_dims]
         return self.dropout_mha(out)
 
 class Block(ABC, nn.Module):
@@ -125,7 +125,8 @@ class Block(ABC, nn.Module):
     def forward(self,
                 src: Tensor,
                 tgt: Tensor,
-                mask: Optional[Tensor]=None
+                src_mask: Optional[Tensor]=None,
+                tgt_mask: Optional[Tensor]=None
                 ) -> Tensor:
         """
         Forward an embedded tensor in the transformer layer.
@@ -164,11 +165,10 @@ class EncoderBlock(Block):
 
     def forward(self,
                 src: Tensor,
-                tgt: Tensor,
-                mask: Optional[Tensor]) -> Tensor:
+                src_mask: Optional[Tensor]) -> Tensor:
 
-        self_attended = self.mha(src, tgt, tgt, mask)
-        self_add_norm = self.layer_norm1(self_attended + tgt)
+        self_attended = self.mha(src, src, src, src_mask)
+        self_add_norm = self.layer_norm1(self_attended + src)
         ffw = self.dropout_ff(self.mlp(self_add_norm))
         return self.layer_norm2(ffw + self_add_norm)
 
@@ -181,24 +181,15 @@ class DecoderBlock(Block):
     def forward(self,
                 src: Tensor,
                 tgt: Tensor,
-                pad_mask: Optional[Tensor]=None,
-                tgt_mask_futur: Optional[Tensor]=None) -> Tensor:
-
-        tgt_attended = self.additional_mha(tgt, tgt, tgt, tgt_mask_futur)
+                src_mask: Optional[Tensor]=None,
+                tgt_mask: Optional[Tensor]=None) -> Tensor:
+        # masked self attention of the target sequence
+        tgt_attended = self.additional_mha(tgt, tgt, tgt, tgt_mask)
         tgt_add_norm = self.additional_layer_norm(tgt_attended + tgt)
-        cross_attended = self.mha(tgt, src, src, pad_mask)
+
+        # cross attention between the source and the target
+        cross_attended = self.mha(tgt_add_norm, src, src, src_mask)
         cross_add_norm = self.layer_norm1(cross_attended + tgt_add_norm)
         ffw = self.dropout_ff(self.mlp(cross_add_norm))
         return self.layer_norm2(ffw + cross_add_norm)
-
-with open("configs/mini.yml", "r") as config_file:
-    yaml_config = yaml.safe_load(config_file)
-    config = Config(**yaml_config)
-decoder = DecoderBlock(config)
-# TODO: Try masking
-pad_mask = None
-src = torch.rand(10, 5, 256)
-tgt = torch.rand(10, 7, 256)
-out = decoder(src, tgt)
-print(out)
-print(out.shape)
+        
