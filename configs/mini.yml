@@ -1,19 +1,19 @@
 src_pos_embeddings: true
 epochs: 3
-batch_size: 32
-dev: data/raw_text/fula.txt
+batch_size: 16
+dev: data/parallel.txt
 dropout: 0.1
 embedding_dims: 256
 ff_size: 1024
 heads: 4
 layers: 6
 lr: 2.5e-4
-max_length: 200
+max_length: 300
 pad_idx: 3
 tokenizer: data/tokenizers/fula.model
-train: data/raw_text/fula.txt
-gradients_accumulation: 1024
-vocab_size: 24000
-valid_every_n_batchs: 3000
-T_max: 3000
+train: data/parallel.txt
+gradients_accumulation: 64
+vocab_size: 32000
+valid_every_n_batchs: 300
+T_max: 500
 checkpoint: # "checkpoints/fula.pt"

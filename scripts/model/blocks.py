@@ -11,8 +11,6 @@ import torch
 from torch import nn
 from torch import Tensor
 
-import yaml
-
 class MultiHeadAttention(nn.Module):
     """
     This class implements a multihead attention.
@@ -91,7 +89,6 @@ class MultiHeadAttention(nn.Module):
         # (https://arxiv.org/pdf/1706.03762.pdf)
         QK = (Q @ K) / 1 / torch.sqrt(torch.tensor(K.shape[-1])) # shape=[b, h, s_q, s_k]
         if mask is not None:
-            print(QK.shape, mask.shape)
             QK += mask[:s_q, :s_k]
         attention = self.softmax(QK) # shape=[b, h, s_q, s_k])
         # for each word, concatenate the attention vectors comming from all the heads.
@@ -165,7 +162,7 @@ class EncoderBlock(Block):
 
     def forward(self,
                 src: Tensor,
-                src_mask: Optional[Tensor]) -> Tensor:
+                src_mask: Optional[Tensor]=None) -> Tensor:
 
         self_attended = self.mha(src, src, src, src_mask)
         self_add_norm = self.layer_norm1(self_attended + src)
@@ -192,4 +189,3 @@ class DecoderBlock(Block):
         cross_add_norm = self.layer_norm1(cross_attended + tgt_add_norm)
         ffw = self.dropout_ff(self.mlp(cross_add_norm))
         return self.layer_norm2(ffw + cross_add_norm)
-        

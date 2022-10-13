@@ -1,6 +1,6 @@
 from typing import Optional
 
-from blocks import EncoderBlock
+from scripts.model.blocks import EncoderBlock
 from torch import nn
 from torch import Tensor
 

@@ -1,6 +1,9 @@
+import sys
+sys.path.append('.')
+
 from typing import Optional
 
-from blocks import DecoderBlock
+from scripts.model.blocks import DecoderBlock
 from torch import nn
 from torch import Tensor
 
