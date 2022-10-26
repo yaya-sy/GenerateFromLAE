@@ -22,9 +22,11 @@ class Seq2Seq(nn.Module):
         self.output_w_embeddings = nn.Embedding(num_embeddings=config.vocab_size,
                                                 embedding_dim=config.embedding_dims,
                                                 padding_idx=config.pad_idx)
-        self.pos_embeddings = nn.Embedding(num_embeddings=config.max_length,
-                                                embedding_dim=config.embedding_dims,
-                                                padding_idx=config.pad_idx)
+        self.pos_embeddings = None
+        if self.config.src_pos_embeddings:
+            self.pos_embeddings = nn.Embedding(num_embeddings=config.max_length,
+                                                    embedding_dim=config.embedding_dims,
+                                                    padding_idx=config.pad_idx)
         self.encoder = Encoder(config)
         self.decoder = Decoder(config)
 
@@ -38,7 +40,7 @@ class Seq2Seq(nn.Module):
         
         # embeddings
         src_embeddings = self.input_w_embeddings(src)
-        if self.config.src_pos_embeddings:
+        if self.pos_embeddings is not None:
             src_positions = torch.arange(0, src_s, dtype=torch.long, device=device).unsqueeze(0)
             src_p_embeddings = self.pos_embeddings(src_positions)
             src_embeddings += src_p_embeddings
@@ -49,15 +51,15 @@ class Seq2Seq(nn.Module):
         tgt_embeddings += tgt_p_embeddings
 
         # masking
-        src_decoder_mask = torch.empty(tgt_s, src_s).to(device)
-        src_encoder_mask = torch.empty(src_s, src_s).to(device)
+        src_decoder_mask = torch.zeros(tgt_s, src_s).bool().to(device)
+        src_encoder_mask = torch.zeros(src_s, src_s).bool().to(device)
         src_pad_mask = (src == self.pad_idx)[-1, ...].to(device)
-        src_decoder_mask[:, src_pad_mask] = float("-inf")
-        src_encoder_mask[:, src_pad_mask] = float("-inf")
+        src_decoder_mask[:, src_pad_mask] = True
+        src_encoder_mask[:, src_pad_mask] = True
 
-        tgt_mask = torch.zeros(tgt_s, tgt_s).fill_(float("-inf")).triu_(1).to(device)
+        tgt_mask = torch.ones(tgt_s, tgt_s).triu_(1).bool().to(device)
         tgt_pad_mask = (tgt == self.pad_idx)[-1, ...].to(device)
-        tgt_mask[:, tgt_pad_mask] = float("-inf")
+        tgt_mask[:, tgt_pad_mask] = True
 
         # encoder-decoder
         encoded_src = self.encoder(src_embeddings, src_encoder_mask)

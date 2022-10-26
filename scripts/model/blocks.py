@@ -87,10 +87,11 @@ class MultiHeadAttention(nn.Module):
 
         # dot-product and use the scaling factor from 'Attention is all you need" paper
         # (https://arxiv.org/pdf/1706.03762.pdf)
-        QK = (Q @ K) / 1 / torch.sqrt(torch.tensor(K.shape[-1])) # shape=[b, h, s_q, s_k]
+        QK = (Q @ K) / torch.sqrt(torch.tensor(K.shape[-1])) # shape=[b, h, s_q, s_k]
         if mask is not None:
-            QK += mask[:s_q, :s_k]
+            QK = QK.masked_fill(mask, float('-inf'))
         attention = self.softmax(QK) # shape=[b, h, s_q, s_k])
+        # print(mask[:s_q, :s_k])
         # for each word, concatenate the attention vectors comming from all the heads.
         out = (attention @ V).view(b, s_q, -1) # [b, s_q, embedd_dims]
         return self.dropout_mha(out)

@@ -11,7 +11,7 @@ class Encoder(nn.Module):
     
     def forward(self,
                 src: Tensor,
-                mask: Optional[Tensor]) -> Tensor:
+                mask: Optional[Tensor]=None) -> Tensor:
         """
         Forward an embedded sequence.
         

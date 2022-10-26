@@ -1,5 +1,5 @@
 src_pos_embeddings: true
-epochs: 3
+epochs: 30
 batch_size: 16
 dev: data/parallel.txt
 dropout: 0.1
@@ -13,7 +13,7 @@ pad_idx: 3
 tokenizer: data/tokenizers/fula.model
 train: data/parallel.txt
 gradients_accumulation: 64
-vocab_size: 32000
-valid_every_n_batchs: 300
-T_max: 500
+vocab_size: 12000
+valid_every_n_batchs: 500
+T_max: 1000
 checkpoint: # "checkpoints/fula.pt"

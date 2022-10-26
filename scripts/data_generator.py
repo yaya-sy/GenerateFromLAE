@@ -49,7 +49,6 @@ class DataGenerator:
             new_batch.append(encoded_sequence + ([self.config.pad_idx] * (max_length - len(encoded_sequence))))
         return new_batch
             
-
     def encode(self,
                sequence: Sequence,
                add_bos: bool=True,
@@ -153,7 +152,7 @@ class DataGenerator:
                 if " @@@ " not in line:
                     continue
                 example = self.example(line)
-                if len(example[0]) > self.config.max_length:
+                if len(example[0]) > self.config.max_length or len(example[2]) > self.config.max_length:
                     print(len(example[0]))
                     continue
                 examples.append(example)

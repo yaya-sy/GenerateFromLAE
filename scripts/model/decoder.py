@@ -15,8 +15,8 @@ class Decoder(nn.Module):
     def forward(self,
                 src: Tensor,
                 tgt: Tensor,
-                src_mask: Optional[Tensor],
-                tgt_mask: Optional[Tensor]) -> Tensor:
+                src_mask: Optional[Tensor]=None,
+                tgt_mask: Optional[Tensor]=None) -> Tensor:
         """
         Forward an embedded sequence.
         
