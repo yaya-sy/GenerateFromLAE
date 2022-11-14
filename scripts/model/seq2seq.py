@@ -24,7 +24,8 @@ class Seq2Seq(nn.Module):
                                                 padding_idx=config.pad_idx)
         self.pos_embeddings = None
         if self.config.src_pos_embeddings:
-            self.pos_embeddings = nn.Embedding(num_embeddings=config.max_length,
+            self.pad_pos = config.max_length
+            self.pos_embeddings = nn.Embedding(num_embeddings=config.max_length + 1,
                                                     embedding_dim=config.embedding_dims,
                                                     padding_idx=config.pad_idx)
         self.encoder = Encoder(config)
@@ -35,31 +36,34 @@ class Seq2Seq(nn.Module):
     def forward(self, src: Tensor, tgt: Tensor):
         """ TODO """
         _, src_s = src.shape
-        _, tgt_s = tgt.shape
+        b, tgt_s = tgt.shape
         device = src.device
         
         # embeddings
         src_embeddings = self.input_w_embeddings(src)
+        src_pad_mask = (src == self.pad_idx).to(device)
         if self.pos_embeddings is not None:
-            src_positions = torch.arange(0, src_s, dtype=torch.long, device=device).unsqueeze(0)
+            src_positions = torch.arange(0, src_s, dtype=torch.long, device=device).unsqueeze(0).repeat(b, 1).to(device)
+            src_positions[src_pad_mask] = self.pad_pos
             src_p_embeddings = self.pos_embeddings(src_positions)
             src_embeddings += src_p_embeddings
 
         tgt_embeddings = self.output_w_embeddings(tgt)
-        tgt_positions = torch.arange(0, tgt_s, dtype=torch.long, device=device).unsqueeze(0)
+        tgt_pad_mask = (tgt == self.pad_idx).to(device)
+        tgt_positions  = torch.arange(0, tgt_s, dtype=torch.long, device=device).unsqueeze(0).repeat(b, 1).to(device)
+        tgt_positions[tgt_pad_mask] = self.pad_idx
         tgt_p_embeddings = self.pos_embeddings(tgt_positions)
         tgt_embeddings += tgt_p_embeddings
 
         # masking
-        src_decoder_mask = torch.zeros(tgt_s, src_s).bool().to(device)
-        src_encoder_mask = torch.zeros(src_s, src_s).bool().to(device)
-        src_pad_mask = (src == self.pad_idx)[-1, ...].to(device)
-        src_decoder_mask[:, src_pad_mask] = True
-        src_encoder_mask[:, src_pad_mask] = True
+        src_decoder_mask = torch.zeros(tgt_s, src_s).unsqueeze(0).repeat(b, 1, 1).bool().to(device)
+        src_encoder_mask = torch.zeros(src_s, src_s).unsqueeze(0).repeat(b, 1, 1).bool().to(device)
+        src_encoder_mask[src_pad_mask.unsqueeze(1).repeat(1, src_s, 1)] = True
+        src_decoder_mask[src_pad_mask.unsqueeze(1).repeat(1, tgt_s, 1)] = True
 
-        tgt_mask = torch.ones(tgt_s, tgt_s).triu_(1).bool().to(device)
-        tgt_pad_mask = (tgt == self.pad_idx)[-1, ...].to(device)
-        tgt_mask[:, tgt_pad_mask] = True
+        tgt_mask = torch.ones(tgt_s, tgt_s).triu(1).unsqueeze(0).repeat(b, 1, 1).bool().to(device)
+        tgt_pad_mask = tgt_pad_mask.unsqueeze(1).repeat(1, tgt_s, 1)
+        tgt_mask[tgt_pad_mask] = True
 
         # encoder-decoder
         encoded_src = self.encoder(src_embeddings, src_encoder_mask)

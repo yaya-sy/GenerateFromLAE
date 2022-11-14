@@ -89,7 +89,7 @@ class MultiHeadAttention(nn.Module):
         # (https://arxiv.org/pdf/1706.03762.pdf)
         QK = (Q @ K) / torch.sqrt(torch.tensor(K.shape[-1])) # shape=[b, h, s_q, s_k]
         if mask is not None:
-            QK = QK.masked_fill(mask, float('-inf'))
+            QK = QK.masked_fill(mask.unsqueeze(1).repeat(1, self.heads, 1, 1), float('-inf'))
         attention = self.softmax(QK) # shape=[b, h, s_q, s_k])
         # print(mask[:s_q, :s_k])
         # for each word, concatenate the attention vectors comming from all the heads.

@@ -1,12 +1,14 @@
 """This module implements a generator of examples."""
 import sys
 sys.path.append('.')
-from typing import List, Tuple, Iterator, Literal
+from typing import List, Tuple, Iterator
 from scripts.configs.config import Config
-import sentencepiece as spm
-
 from random import shuffle
+from random import choice
 from random import randrange
+
+import sentencepiece as spm
+from collections import defaultdict
 
 
 Sequence = List[str]
@@ -25,12 +27,12 @@ class DataGenerator:
         all the relevant informations.
     """
 
-    def __init__(self, config: Config, corpus_type: Literal["train", "dev"]):
+    def __init__(self, config: Config, corpus_type: str):
         self.tokenizer = spm.SentencePieceProcessor(model_file=config.tokenizer)
         self.config = config
         corpus = config.to_dict()[corpus_type]
-        self.examples = self.make_examples(corpus)
-        self.size = len(self.examples)
+        self.grouped_examples = self.group_by_length(self.make_examples(corpus))
+        # self.size = len(self.examples)
 
     def pad(self, batch: Batch) -> Batch:
         """
@@ -152,18 +154,32 @@ class DataGenerator:
                 if " @@@ " not in line:
                     continue
                 example = self.example(line)
-                if len(example[0]) > self.config.max_length or len(example[2]) > self.config.max_length:
-                    print(len(example[0]))
+                if (len(example[0]) > self.config.max_length
+                        or len(example[2]) > self.config.max_length):
                     continue
                 examples.append(example)
         return examples
+    
+    def group_by_length(self, examples):
+        grouped_examples = defaultdict(list)
+        for src, tgt, y in examples:
+            # allowing no more than 3 padding elements in a batch for the source
+            approximate_length = round((3 * round(len(src) / 3)))
+            grouped_examples[approximate_length].append((src, tgt, y))
+        for length in grouped_examples:
+            grouped_examples[length].sort(reverse=True)
+        return grouped_examples
+
 
     def prompt(self) -> EncodedSequence:
         """Prompt an encoded sequence."""
         # choose randomly one example
-        random_example = randrange(self.size)
+        choosen_length = choice(list(self.grouped_examples.keys()))
+        examples = self.grouped_examples[choosen_length]
+        size = len(examples)
+        random_example = randrange(size)
         # get only the source sequence, not the target
-        src, expected, _ = self[random_example]
+        src, expected, _ = examples[random_example]
         return src, expected
 
     def __getitem__(self, idx: int) -> Example:
@@ -191,7 +207,8 @@ class DataGenerator:
         - Iterator:
             Iterator over the batches.
         """
-        shuffle(self.examples)
-        for step in range(0, self.size, batch_size) :
-            src, tgt_x, tgt_y = zip(*self.examples[step:step + batch_size])
-            yield self.pad(src), self.pad(tgt_x), self.pad(tgt_y)
+        for _, examples in self.grouped_examples.items():
+            size = len(examples)
+            for step in range(0, size, batch_size) :
+                src, tgt_x, tgt_y = zip(*examples[step:step + batch_size])
+                yield self.pad(src), self.pad(tgt_x), self.pad(tgt_y)

@@ -26,7 +26,7 @@ def train(model, traingenerator, validgenerator, device, output_path, config) :
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=.1, betas=(0.9, 0.95))
     scheduler = CosineAnnealingLR(optimizer, T_max=config.T_max, eta_min=0)
     best_loss = float("Inf")
-    nb_batchs = sum(1 for _ in range(0, traingenerator.size, config.batch_size))
+    nb_batchs = sum(1 for _ in traingenerator(batch_size=config.batch_size))
     verbose = 0
     with open("training.logs", "a+") as epochs_file:
         for epoch in range(config.epochs) :
